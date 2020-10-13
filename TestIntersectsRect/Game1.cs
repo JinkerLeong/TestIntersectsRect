@@ -5,6 +5,7 @@ using CustomHelper;
 using System.Runtime.InteropServices;
 using System.Net.Http.Headers;
 using System;
+using System.Threading;
 
 namespace TestIntersectsRect
 {
@@ -33,36 +34,48 @@ namespace TestIntersectsRect
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            rect1 = new MyRectangle(50, 50, 100, 100);
+            rect1 = new MyRectangle(50, 50, 100, 100) { Origin = new Vector2(50) };
             rect2 = new MyRectangle(200, 200, 100, 100, Color.Green);
+
             font = Content.Load<SpriteFont>("sss");
             // TODO: use this.Content to load your game content here
         }
 
         float speed = 2f;
         float rotationSpeed = 0.2f;
-        MyRectangle.MTV  mtv;
-        Vector2 Velocity;
+        Vector2 mtv;
         string result = "";
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
             KeyboardState nowKeyboardState = Keyboard.GetState();
-            Velocity = Vector2.Zero;
 
             if (nowKeyboardState.IsKeyDown(Keys.W))
-                Velocity.Y -= speed;
+                rect1.Y -= speed;
             if (nowKeyboardState.IsKeyDown(Keys.S))
-                Velocity.Y += speed;
+                rect1.Y += speed;
             if (nowKeyboardState.IsKeyDown(Keys.A))
-                Velocity.X -= speed;
+                rect1.X -= speed;
             if (nowKeyboardState.IsKeyDown(Keys.D))
-                Velocity.X += speed;
+                rect1.X += speed;
             if (nowKeyboardState.IsKeyDown(Keys.R))
                 rect1.Rotation += rotationSpeed;
-            rect1.X += Velocity.X;
-            rect1.Y += Velocity.Y;
+            result = "Real Origin: " + rect1.RealOrigin.ToString() +
+                "\nPosition: " + rect1.Position +
+                "\nCenter: " + rect1.Center;
+            if (rect1.IsCollision(rect2, out mtv))
+            {
+                rect1.RectColor = Color.LightPink;
+
+                rect1.X += mtv.X;
+                rect1.Y += mtv.Y;
+            }
+            else
+            {
+                rect1.RectColor = Color.Red;
+            }
+
 
             if (nowKeyboardState.IsKeyDown(Keys.Up))
                 rect2.Y -= speed;
@@ -74,25 +87,27 @@ namespace TestIntersectsRect
                 rect2.X += speed;
             if (nowKeyboardState.IsKeyDown(Keys.T))
                 rect2.Rotation += rotationSpeed;
-            if (rect1.IsCollision(rect2, out mtv))
-            {
-                rect1.RectColor = Color.Red;
-                result = mtv.overlap.ToString();
 
-                Vector2 translation = mtv.overlap * mtv.Axis;
-                float dot = Vector2.Dot(translation, Velocity);
-                if (dot > 0)
-                    translation *= -1;
-                rect1.X += translation.X;
-                rect1.Y += translation.Y;
+            if (rect2.IsCollision(rect1, out mtv))
+            {
+                rect2.RectColor = Color.LightGreen;
+
+                rect2.X += mtv.X;
+                rect2.Y += mtv.Y;
             }
             else
             {
-                rect1.RectColor = Color.White;
+                rect2.RectColor = Color.Green;
             }
+            
 
             lastKeyboardState = nowKeyboardState;
             base.Update(gameTime);
+        }
+
+        private bool SameDirection(float a, float b)
+        {
+            return ((a > 0 && b > 0) || (a < 0 && b < 0));
         }
 
         protected override void Draw(GameTime gameTime)
@@ -103,7 +118,7 @@ namespace TestIntersectsRect
 
             rect1.Draw(_spriteBatch);
             rect2.Draw(_spriteBatch);
-            _spriteBatch.DrawString(font, result, Vector2.Zero, Color.Red);
+            _spriteBatch.DrawString(font, result, Vector2.Zero, Color.Yellow);
             _spriteBatch.End();
             // TODO: Add your drawing code here
 

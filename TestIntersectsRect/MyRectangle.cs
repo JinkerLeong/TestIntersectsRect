@@ -13,6 +13,7 @@ namespace CustomHelper
         private Texture2D texture2D;
 
         private Vector2 position;
+        public Vector2 Position { get => position; set => position = value; }
         private int width, height;
         public int Width { get => width; set => width = value; }
         public int Height { get => height; set => height = value; }
@@ -21,6 +22,25 @@ namespace CustomHelper
         private Vector2 origin;
         public Vector2 Origin { get => origin; set => origin = value; }
         private float rotation;
+
+        public Vector2 Center
+        {
+            get
+            {
+                Vector2 center = new Vector2(position.X + width / 2, position.Y + height / 2);
+                if (rotation == 0f)
+                    return center;
+                return VectorHelper.Rotate(center, RealOrigin, rotation); //if rectangle rotated must rotate the center from origin.
+            }
+        }
+
+        public Vector2 RealOrigin
+        {
+            get
+            {
+                return position + origin;
+            }
+        }
         public float Rotation { get => rotation; set => rotation = value; }
 
         private Color rectcolor;
@@ -69,12 +89,9 @@ namespace CustomHelper
         public Vector2[] GetVertices()
         {
             Vector2[] dv = DefaultVertices();
-            Vector2 realOrigin = new Vector2();
+            Vector2 realOrigin = this.RealOrigin;
             for (int i = 0; i < dv.Length; i++)
             {
-                dv[i].X -= origin.X;
-                dv[i].Y -= origin.Y;
-                realOrigin = position;
                 dv[i] = VectorHelper.Rotate(dv[i], realOrigin, rotation);
             }
             return dv;
@@ -82,7 +99,7 @@ namespace CustomHelper
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(texture2D, position, null, Color.White, rotation, origin, Vector2.One, SpriteEffects.None, 0f);
+            spriteBatch.Draw(texture2D, position + origin, null, Color.White, rotation, origin, Vector2.One, SpriteEffects.None, 0f);
         }
 
         public Vector2[] GetAxes()
@@ -99,24 +116,7 @@ namespace CustomHelper
             return axes;
         }
 
-        public class MTV
-        {
-            public Vector2 Axis;
-            public float overlap;
-            public Vector2 r1r2;
-            public MTV(float _overlap, Vector2 axis)
-            {
-                Axis = axis;
-                overlap = _overlap;
-            }
-            public MTV()
-            {
-                Axis = Vector2.Zero;
-                overlap = 0f;
-            }
-        }
-
-        public bool IsCollision(MyRectangle otherRect, out MTV mtv)
+        public bool IsCollision(MyRectangle otherRect, out Vector2 mtv)
         {
             List<Vector2> axes = new List<Vector2>(8);
             axes.AddRange(this.GetAxes());
@@ -125,7 +125,9 @@ namespace CustomHelper
             Projection a, b;
 
             float temp;
-            mtv = new MTV(float.MaxValue, Vector2.Zero);
+            float smallestOverlap = float.MaxValue;
+            Vector2 smallestAxis = Vector2.Zero;
+            mtv = Vector2.Zero;
 
             foreach (Vector2 axis in axes)
             {
@@ -138,13 +140,19 @@ namespace CustomHelper
                     return false;
                 }
 
-                if (temp < mtv.overlap)
+                if (temp < smallestOverlap)
                 {
-                    mtv.overlap = temp;
-                    mtv.Axis = axis;
+                    smallestOverlap = temp;
+                    smallestAxis = axis;
                 }
             }
-            mtv.r1r2 = this.position - otherRect.position;
+
+            mtv = smallestOverlap * smallestAxis;
+
+            //center is center rectangle, no origin.
+            if (Vector2.Dot(this.Center - otherRect.Center, mtv) < 0) //this.Center - otherRect.Center to get both direction. Than if result < 0 mtv must reverse.
+                mtv *= -1; //reverse mtv
+
             return true;
         }
 
